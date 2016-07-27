@@ -1,0 +1,32 @@
+{
+  "label": "The title of the project",
+  "description": "Example long description",
+  "shortDescription": "Example short description",
+  "@type": "Project",
+  "url": "https://www.reutilitza.cat/projects/xyz",
+  "tags": ["tag 1", "tag 2", "tag 3"],
+  "links": {
+    "website": "https://example.com",
+    "facebook": "https://www.facebook.com/user/1",
+    "twitter": "https://www.facebook.com/user/1"
+  },
+  "image": "https://www.reutilitza.cat/.../images/442451324976",
+  "requiredDevices": {
+    "Desktop": 4,
+    "DesktopWithPeripherals": 9,
+    "Laptop": 5,
+    "MobilePhone": 1,
+    "TabletComputer": 4,
+    "ComputerMonitor": 9
+  },
+  "deadline": "2016-07-25T18:18:13",
+  "address": {
+    "addressCountry": "ES",
+    "addressLocality": "Barcelona",
+    "addressRegion": "Barcelona",
+    "postalCode": "08036",
+    "streetAddress": "C/ Jordi Girona, 1-3"
+  },
+  "votes": 42,
+  "byUser": "https://www.reutilitza.cat/user/32"
+}

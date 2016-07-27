@@ -1,0 +1,9 @@
+{
+  "url": "https://www.reutilitza.cat/user/32",
+  "email": "b@b.com",
+  "active": false,
+  "organization": "ong1",
+  "isOrganization": false,
+  "databases": ["dht1"],
+  "@type": "Account"
+}

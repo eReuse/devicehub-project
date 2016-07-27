@@ -1,0 +1,9 @@
+{
+  "email": "transferhub@ereuse.org",
+  "active": true,
+  "isOrganization": false,
+  "password": "random password",
+  "role": "admin",
+  "@type": "Account",
+  "databases": ["dht1"]
+}

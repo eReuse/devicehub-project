@@ -1,0 +1,33 @@
+{
+  "_id": 416,
+  "@type": "devices:Allocate",
+  "url": "https://devicetag.io/reutilitza/events/416",
+  "date": "2016-07-25T18:18:13",
+  "description": "I accepted it because...",
+  "byUser": "https://devicetag.io/reutilitza/accounts/55d6739045",
+  "project": "https://www.reutilitza.cat/projects/xyz",
+  "to": "https://www.reutilitza.cat/users/receiver1",
+  "devices": [{
+    "_id" : "15",
+    "url": "https://devicetag.io/reutilitza/devices/15",
+    "type" : "Desktop",
+    "serialNumber" : "86SXQ-0000029",
+    "components" : [
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24"
+    ],
+    "hid" : "sony_corporation-86sxq-0000029-svd1123c5f",
+    "@type" : "Computer",
+    "_created" : "2016-07-25T20:48:28.000Z",
+    "model" : "SVD1123C5F",
+    "manufacturer" : "Sony Corporation",
+    "label" : ""
+  }]
+}
