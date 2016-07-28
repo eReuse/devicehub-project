@@ -9,7 +9,10 @@ class ProjectEvent(Event):
     pass
 
 
-ProjectEvent._settings = dict(ProjectEvent._settings, **{'url': 'projects'}, **prefix)  # todo make this nice
+settings = ProjectEvent._settings.copy()
+settings.update({'url': 'projects'})
+settings.update(prefix)
+ProjectEvent._settings = settings  # todo make this nice
 
 # Adds a project field to Allocate and Receive
 Allocate.project = Receive.project = {
