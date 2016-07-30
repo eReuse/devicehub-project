@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from unittest.mock import MagicMock
@@ -72,18 +73,29 @@ class TestDeviceHubProject(TestEvent):
         expected_receiver = self.get_fixture('user', 'expected_receiver', directory=actual_directory)
         receiver_from_response = json.loads(response.data.decode())
         self.assertDictContainsSubset(expected_receiver, receiver_from_response)
+        # If we try to re-create the same account with the same 'url' field, it should fail
+        response = test_client.post(self.ACCOUNTS, data=json.dumps(receiver), content_type='application/json',
+                                    environ_base=environ_base)
+        self.assert422(response._status_code)
 
         # Now we create a project through the TransferHub account, stating that byUser is Receiver
-        project = self.get_fixture('project', 'project', directory=actual_directory)
-        response = test_client.post('{}/{}'.format(db, self.PROJECTS), data=json.dumps(project), content_type='application/json',
-                                    environ_base=environ_base)
+        original_project = self.get_fixture('project', 'project', directory=actual_directory)
+        response = test_client.post('{}/{}'.format(db, self.PROJECTS), data=json.dumps(original_project),
+                                    content_type='application/json', environ_base=environ_base)
         self.assert201(response._status_code)
         project_from_response = json.loads(response.data.decode())
+        project = copy.deepcopy(original_project)
         project['byUser'] = project_from_response['byUser']
         project['sameAs'] = project['url']
         del project['url']
-        self.assertDictContainsSubset(project, project_from_response)  # todo sameAs
-        assert_that(project_from_response['byUser']).is_equal_to(response['_id'])
+        self.assertDictContainsSubset(project, project_from_response)
+        # Let's ensure the creator of the project is set to be the receiver
+        assert_that(project_from_response['byUser']).is_equal_to(receiver_from_response['_id'])
+
+        # We should not be able to create the same project again, as url (transformed to sameAs) has to be unique
+        response = test_client.post('{}/{}'.format(db, self.PROJECTS), data=json.dumps(original_project),
+                         content_type='application/json', environ_base=environ_base)
+        self.assert422(response._status_code)
 
         # We accept the project
         projects_accept = self.get_fixture('event', 'projects_input', directory=actual_directory)

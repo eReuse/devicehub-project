@@ -1,8 +1,9 @@
-from ereuse_devicehub.resources.device.schema import Device
+from ereuse_devicehub.resources.account.role import Role
 from ereuse_devicehub.resources.place.settings import Place
 from ereuse_devicehub.resources.resource import ResourceSettings
 from ereuse_devicehub.resources.schema import Thing
 from ereuse_devicehub.validation.coercer import Coercer
+from ereuse_devicehub.validation.validation import ALLOWED_WRITE_ROLES
 
 
 class Project(Thing):
@@ -59,7 +60,9 @@ class Project(Thing):
             'embeddable': True
         },
         'sink': 2,
-        'coerce_with_context': Coercer.url_to_id
+        'in_database': True,
+        'coerce_with_context': Coercer.url_to_id,
+        ALLOWED_WRITE_ROLES: Role.MANAGERS,
     }
 
 

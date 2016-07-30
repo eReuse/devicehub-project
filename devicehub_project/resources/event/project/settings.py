@@ -8,7 +8,6 @@ prefix = {'prefix': 'projects'}
 class ProjectEvent(Event):
     pass
 
-
 settings = ProjectEvent._settings.copy()
 settings.update({'url': 'projects'})
 settings.update(prefix)
