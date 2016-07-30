@@ -1,6 +1,5 @@
 from ereuse_devicehub.resources.submitter.submitter_caller import SubmitterCaller
 
-from devicehub_project.resources.project.settings import Project
 from devicehub_project.resources.th_submitter.hooks import send_project_events_to_transferhub
 from devicehub_project.resources.th_submitter.th_submitter import ThSubmitter
 

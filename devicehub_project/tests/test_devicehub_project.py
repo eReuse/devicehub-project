@@ -2,13 +2,17 @@ import copy
 import json
 import os
 from unittest.mock import MagicMock
+from urllib.request import Request
 
+import requests
+import validators
 from assertpy import assert_that
 from ereuse_devicehub.tests.test_resources.test_events import TestEvent
 from ereuse_devicehub.tests.test_resources.test_submitter.test_submitter import TestSubmitter
 from flask import request
 
 from devicehub_project import DeviceHubProject, ProjectSettings
+from devicehub_project.resources.th_submitter.th_submitter import ThAuth
 
 
 class TestDeviceHubProject(TestEvent):
@@ -24,17 +28,29 @@ class TestDeviceHubProject(TestEvent):
             }
         }
         self.devicehub_project = DeviceHubProject(self.app)
-        self.app.config['GRD'] = False
+
 
     def set_settings(self, settings):
-        settings.DOMAIN['projects'] = ProjectSettings
        # settings.RESOURCES_CHANGING_NUMBER.append(self.PROJECTS)
         super().set_settings(settings)
+        settings.DOMAIN['projects'] = ProjectSettings
+        settings.GRD = False
 
     def test_init(self):
         assert_that(self.domain).contains('projects')
         assert_that(self.domain['devices_allocate']['schema']).contains('project')
         assert_that(self.domain).contains('projects_accept', 'projects_cancel', 'projects_finish', 'projects_reject')
+
+    def test_auth(self):
+        auth = ThAuth('username', 'password', 'domain')
+        request = Request('http://example.com')
+        token = 'XYZ'
+        _get = requests.get
+        requests.get = MagicMock(return_value=token)
+        auth(request)
+        requests.get.assert_called_once_with('domain/rest/session/token')
+        requests.get = _get
+        assert_that(request.headers['X-CSRF-Token']).is_equal_to(token)
 
     def mock_post(self, final_resource, final_url):
         def _mock_post(resource: dict, url: str):
@@ -91,32 +107,45 @@ class TestDeviceHubProject(TestEvent):
         self.assertDictContainsSubset(project, project_from_response)
         # Let's ensure the creator of the project is set to be the receiver
         assert_that(project_from_response['byUser']).is_equal_to(receiver_from_response['_id'])
-
-        # We should not be able to create the same project again, as url (transformed to sameAs) has to be unique
+        # We should not be able to create the same project again,
+        # as url (internally transformed to sameAs) has to be unique
         response = test_client.post('{}/{}'.format(db, self.PROJECTS), data=json.dumps(original_project),
                          content_type='application/json', environ_base=environ_base)
         self.assert422(response._status_code)
 
-        # We accept the project
-        projects_accept = self.get_fixture('event', 'projects_input', directory=actual_directory)
-        # Accept is done in DeviceHub by an admin user, so we need to intercept the TransferHub submitter
-        # to not to send actual info to a TransferHub, but to assert it
-        projects_accept_expected = self.get_fixture('event', 'projects_output', directory=actual_directory)
-        mock_post = self.mock_post(projects_accept_expected,
-                                   'http://www.reutilitza.cat/events/projects/')  # todo url id project
-        # The actual call
-        caller.submit.side_effect = TestSubmitter.mock_submit(caller.submitter, caller.token, caller.app, mock_post)
-        # This is done by an admin user through DeviceHub; we use the default user for tests
-        self.post_and_check('events/projects/accept', projects_accept)
-        assert_that(caller.submit.call_count).is_equal_to(1)
+        # Let's create a manager, who is going to accept the project
+        manager = self.get_fixture('user', 'manager', directory=actual_directory)
+        response = test_client.post(self.ACCOUNTS, data=json.dumps(manager),
+                         content_type='application/json', environ_base=environ_base)
+        self.assert201(response._status_code)
+
+        # The manager accepts the project
+        projects_accept = self.get_fixture('event', 'projects_accept', directory=actual_directory)
+        response = test_client.post('{}/{}'.format(db, 'events/projects/accept'), data=json.dumps(projects_accept),
+                         content_type='application/json', environ_base=environ_base)
+        self.assert201(response._status_code)
+        accept_from_response = json.loads(test_client.get('{}/{}/{}'.format(db, 'events', json.loads(response.data.decode())['_id']), environ_base=environ_base).data.decode())
+        # We get the full response through GET
+        projects_accept_expected = self.get_fixture('event', 'projects_accept_expected', directory=actual_directory)
+        # Project and byUser shouldn't be an URL, as we are not sending the result through the Submitter
+        assert_that(validators.url(accept_from_response['project'])).is_false()
+        assert_that(validators.url(accept_from_response['byUser'])).is_false()
+        self.assertDictContainsSubset(projects_accept_expected, accept_from_response)
 
         # We assign some devices to the project
-        devices_accept = self.get_fixture('event', 'devices_accept', directory=actual_directory)
-        # This is done again by the admin user
-        devices_accept_expected = self.get_fixture('event', 'devices_accept_final', directory=actual_directory)
-        mock_post = self.mock_post(devices_accept_expected,
-                                   'http://www.reutilitza.cat/events/devices/')  # todo url id project
+        devices_allocate = self.get_fixture('event', 'devices_allocate', directory=actual_directory)
+        # This is done from a manager directly from a DeviceHub, so identifiers are internals, not url
+        devices_allocate['project'] = project_from_response['_id']  # We allocate to the receiver
+        devices_allocate['to'] = receiver_from_response['_id']  # And to its project
+        devices_allocate['devices'] = self.devices_id  # Some devices to allocate
+        # We use ThSubmitter to send it to TransferHub. We are going to mock the Submitter
+        devices_allocate_expected = self.get_fixture('event', 'devices_allocate_expected', directory=actual_directory)
+        devices_allocate_expected['to'] = receiver_from_response['sameAs']
+        mock_post = self.mock_post(devices_allocate_expected, 'http://www.reutilitza.cat/events/devices/')
         caller.submit.side_effect = TestSubmitter.mock_submit(caller.submitter, caller.token, caller.app, mock_post)
-        # The actual call
-        self.post_and_check('events/devices/accept', devices_accept)
-        assert_that(caller.submit.call_count).is_equal_to(1)
+        # It can be done by another manager, like the admin user used in regular tests
+        self.post_and_check('events/devices/allocate', devices_allocate)
+        assert_that(caller.submit.call_count).is_equal_to(1)  # We only submit one event to TransferHub
+        # If we try to allocate again, DeviceHub sees that the devices were already allocated to the user
+        _, status_code = self.post('events/devices/allocate', devices_allocate)
+        self.assert422(status_code)

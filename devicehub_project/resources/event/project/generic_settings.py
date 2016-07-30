@@ -9,7 +9,7 @@ from devicehub_project.resources.event.project.settings import ProjectEvent, Pro
 """
 
 for generic_type in ProjectEventDomain.GENERIC_TYPES:
-    resource_settings = {
+    schema = {
         '_settings': dict(Event._settings, **prefix)
     }
-    Resource.create(generic_type, ProjectEvent, {}, ProjectEventSubSettings, resource_settings)
+    Resource.create(generic_type, ProjectEvent, schema, ProjectEventSubSettings, {})

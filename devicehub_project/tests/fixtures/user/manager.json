@@ -1,0 +1,9 @@
+{
+  "url": "https://www.reutilitza.cat/users/manager",
+  "email": "manager@manager.com",
+  "active": false,
+  "isOrganization": false,
+  "databases": ["dht1"],
+  "@type": "Account",
+  "role": "admin"
+}

@@ -1,0 +1,8 @@
+{
+  "@type": "devices:Allocate",
+  "date": "2016-07-25T18:18:13",
+  "description": "I allocate these devices...",
+  "project": "https://www.reutilitza.cat/projects/xyz",
+  "secured": false,
+  "incidence": false
+}
