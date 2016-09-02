@@ -1,4 +1,5 @@
 import requests
+from ereuse_devicehub.resources.account.domain import AccountDomain
 from ereuse_devicehub.resources.event.device import DeviceEventDomain
 from ereuse_devicehub.resources.submitter.submitter import Submitter
 from ereuse_devicehub.resources.submitter.translator import Translator
@@ -6,14 +7,12 @@ from requests.auth import HTTPBasicAuth
 
 
 class ThSubmitter(Submitter):
-    def __init__(self, token: str, app, **kwargs):
+    def __init__(self, token: str, app):
         config = app.config
         domain = config['DEVICEHUB_PROJECT']['TH_DOMAIN']
         translator = THTranslator(config)
-        account = config['DEVICEHUB_PROJECT']['TH_ACCOUNT']
-        auth = ThAuth(account['username'], account['password'], domain)
         debug = config.setdefault('TH_DEBUG', False)
-        super().__init__(token, app, domain, translator, auth, debug)
+        super().__init__(token, app, domain, translator, None, debug)
         self.embedded.update({'project': 1, 'to': 1, 'byUser': 1})
 
     def generate_url(self, original_resource, translated_resource) -> str:
@@ -24,6 +23,10 @@ class ThSubmitter(Submitter):
     def _post(self, resource: dict, url: str, **kwargs):
         kwargs['headers'] = {'Cache-Control': 'no-cache'}
         super()._post(resource, url, **kwargs)
+
+    def submit(self, resource_id: str, database: str, resource_name: str, actual_account: dict):
+        self.auth = ThAuth(actual_account['email'], actual_account['password'], self.domain)
+        super().submit(resource_id, database, resource_name)
 
 
 class ThAuth(HTTPBasicAuth):
