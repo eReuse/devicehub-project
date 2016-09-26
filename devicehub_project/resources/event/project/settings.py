@@ -25,6 +25,8 @@ ProjectEvent._settings = settings  # todo make this nice
 
 # Adds a project field to devices:Allocate and devices:Receive
 Allocate.project = Receive.project = ProjectEvent.project
+# We can extract the 'to' field from the byUser of the project (look at hooks.py)
+Allocate.to['or'].append('project')
 
 
 class ProjectEventSettings(EventSettings):

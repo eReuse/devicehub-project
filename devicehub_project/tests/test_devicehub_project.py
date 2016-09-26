@@ -7,12 +7,11 @@ from urllib.request import Request
 import requests
 import validators
 from assertpy import assert_that
+from devicehub_project import DeviceHubProject, ProjectSettings
+from devicehub_project.resources.th_submitter.th_submitter import ThAuth
 from ereuse_devicehub.tests.test_resources.test_events import TestEvent
 from ereuse_devicehub.tests.test_resources.test_submitter.test_submitter import TestSubmitter
 from flask import request
-
-from devicehub_project import DeviceHubProject, ProjectSettings
-from devicehub_project.resources.th_submitter.th_submitter import ThAuth
 
 
 class TestDeviceHubProject(TestEvent):
@@ -23,15 +22,15 @@ class TestDeviceHubProject(TestEvent):
         self.app.config['DEVICEHUB_PROJECT'] = {
             'TH_DOMAIN': 'https://www.reutilitza.cat',
             'TH_ACCOUNT': {
-                'username': '',
-                'password': ''
-            }
+                'username': 'trial@trial.com',
+                'password': 'trial'
+            },
+            'DEBUG': True
         }
         self.devicehub_project = DeviceHubProject(self.app)
 
-
     def set_settings(self, settings):
-       # settings.RESOURCES_CHANGING_NUMBER.append(self.PROJECTS)
+        # settings.RESOURCES_CHANGING_NUMBER.append(self.PROJECTS)
         super().set_settings(settings)
         settings.DOMAIN['projects'] = ProjectSettings
         settings.GRD = False
@@ -42,15 +41,19 @@ class TestDeviceHubProject(TestEvent):
         assert_that(self.domain).contains('projects_accept', 'projects_cancel', 'projects_finish', 'projects_reject')
 
     def test_auth(self):
-        auth = ThAuth('username', 'password', 'domain')
         request = Request('http://example.com')
-        token = 'XYZ'
+        auth = ThAuth('username', 'password', 'domain')
+
+        class Token:
+            text = 'XYZ'
+        token = Token()
+
         _get = requests.get
         requests.get = MagicMock(return_value=token)
         auth(request)
         requests.get.assert_called_once_with('domain/rest/session/token')
         requests.get = _get
-        assert_that(request.headers['X-CSRF-Token']).is_equal_to(token)
+        assert_that(request.headers['X-CSRF-Token']).is_equal_to(token.text)
 
     def mock_post(self, final_resource, final_url):
         def _mock_post(resource: dict, url: str):
@@ -110,21 +113,23 @@ class TestDeviceHubProject(TestEvent):
         # We should not be able to create the same project again,
         # as url (internally transformed to sameAs) has to be unique
         response = test_client.post('{}/{}'.format(db, self.PROJECTS), data=json.dumps(original_project),
-                         content_type='application/json', environ_base=environ_base)
+                                    content_type='application/json', environ_base=environ_base)
         self.assert422(response._status_code)
 
         # Let's create a manager, who is going to accept the project
         manager = self.get_fixture('user', 'manager', directory=actual_directory)
         response = test_client.post(self.ACCOUNTS, data=json.dumps(manager),
-                         content_type='application/json', environ_base=environ_base)
+                                    content_type='application/json', environ_base=environ_base)
         self.assert201(response._status_code)
 
         # The manager accepts the project
         projects_accept = self.get_fixture('event', 'projects_accept', directory=actual_directory)
         response = test_client.post('{}/{}'.format(db, 'events/projects/accept'), data=json.dumps(projects_accept),
-                         content_type='application/json', environ_base=environ_base)
+                                    content_type='application/json', environ_base=environ_base)
         self.assert201(response._status_code)
-        accept_from_response = json.loads(test_client.get('{}/{}/{}'.format(db, 'events', json.loads(response.data.decode())['_id']), environ_base=environ_base).data.decode())
+        accept_from_response = json.loads(
+            test_client.get('{}/{}/{}'.format(db, 'events', json.loads(response.data.decode())['_id']),
+                            environ_base=environ_base).data.decode())
         # We get the full response through GET
         projects_accept_expected = self.get_fixture('event', 'projects_accept_expected', directory=actual_directory)
         # Project and byUser shouldn't be an URL, as we are not sending the result through the Submitter
@@ -136,7 +141,7 @@ class TestDeviceHubProject(TestEvent):
         devices_allocate = self.get_fixture('event', 'devices_allocate', directory=actual_directory)
         # This is done from a manager directly from a DeviceHub, so identifiers are internals, not url
         devices_allocate['project'] = project_from_response['_id']  # We allocate to the receiver
-        devices_allocate['to'] = receiver_from_response['_id']  # And to its project
+        # Note that we do not need to assign 'to', as we infer this information from the project's byUser field
         devices_allocate['devices'] = self.devices_id  # Some devices to allocate
         # We use ThSubmitter to send it to TransferHub. We are going to mock the Submitter
         devices_allocate_expected = self.get_fixture('event', 'devices_allocate_expected', directory=actual_directory)

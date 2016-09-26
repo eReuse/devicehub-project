@@ -1,5 +1,4 @@
 import requests
-from ereuse_devicehub.resources.account.domain import AccountDomain
 from ereuse_devicehub.resources.event.device import DeviceEventDomain
 from ereuse_devicehub.resources.submitter.submitter import Submitter
 from ereuse_devicehub.resources.submitter.translator import Translator
@@ -8,11 +7,12 @@ from requests.auth import HTTPBasicAuth
 
 class ThSubmitter(Submitter):
     def __init__(self, token: str, app):
-        config = app.config
-        domain = config['DEVICEHUB_PROJECT']['TH_DOMAIN']
-        translator = THTranslator(config)
+        config = app.config['DEVICEHUB_PROJECT']
+        domain = config['TH_DOMAIN']
+        translator = THTranslator(app.config)
         debug = config.setdefault('TH_DEBUG', False)
-        super().__init__(token, app, domain, translator, None, debug)
+        auth = ThAuth(config['TH_ACCOUNT']['username'], config['TH_ACCOUNT']['password'], domain)
+        super().__init__(token, app, domain, translator, auth, debug)
         self.embedded.update({'project': 1, 'to': 1, 'byUser': 1})
 
     def generate_url(self, original_resource, translated_resource) -> str:
@@ -24,8 +24,7 @@ class ThSubmitter(Submitter):
         kwargs['headers'] = {'Cache-Control': 'no-cache'}
         super()._post(resource, url, **kwargs)
 
-    def submit(self, resource_id: str, database: str, resource_name: str, actual_account: dict):
-        self.auth = ThAuth(actual_account['email'], actual_account['password'], self.domain)
+    def submit(self, resource_id: str, database: str, resource_name: str):
         super().submit(resource_id, database, resource_name)
 
 
@@ -40,8 +39,8 @@ class ThAuth(HTTPBasicAuth):
 
     def __call__(self, r):
         if self.token is None:
-            self.token = requests.get('{}/rest/session/token'.format(self.domain))
-        r.headers['X-CSRF-Token'] = self.token
+            self.response = requests.get('{}/rest/session/token'.format(self.domain))
+        r.headers['X-CSRF-Token'] = self.response.text
         return super().__call__(r)
 
 
